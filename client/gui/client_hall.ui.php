@@ -1,4 +1,6 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?php
+	echo '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+?>
 <ui version="4.0">
  <class>Form</class>
  <widget class="QWidget" name="Form">
@@ -49,118 +51,34 @@
     		'ce'=>'Compile Error',
     		'tle'=>'Time Limit Exceeded',
     	);
+    	$iN = 1;
+    	foreach($arrTable as $name => $text)
+    	{
+    		$str= <<<STR
+	<item row="$iN" column="2">
+     <widget class="QLabel" name="lab_$name">
+      <property name="maximumSize">
+       <size>
+        <width>75</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>$text</string>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="$iN" column="3">
+     <widget class="QListView" name="listView_$name"/>
+    </item>
+STR;
+			echo $str;
+			$iN ++;
+    	}
     ?>
-    <item row="1" column="2">
-     <widget class="QLabel" name="lab_sub">
-      <property name="maximumSize">
-       <size>
-        <width>75</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>Submit</string>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="2">
-     <widget class="QLabel" name="lab_ac">
-      <property name="maximumSize">
-       <size>
-        <width>75</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>Accept</string>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="2">
-     <widget class="QLabel" name="lab_wa">
-      <property name="maximumSize">
-       <size>
-        <width>75</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>Wrong Answer</string>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="2">
-     <widget class="QLabel" name="lab_pe">
-      <property name="maximumSize">
-       <size>
-        <width>75</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>Presentation Error</string>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="2">
-     <widget class="QLabel" name="lab_ce">
-      <property name="maximumSize">
-       <size>
-        <width>75</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>Compile Error</string>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="6" column="2">
-     <widget class="QLabel" name="lab_tle">
-      <property name="maximumSize">
-       <size>
-        <width>75</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>Time Limit Exceeded</string>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="3">
-     <widget class="QListView" name="listView_ac"/>
-    </item>
-    <item row="3" column="3">
-     <widget class="QListView" name="listView_wa"/>
-    </item>
-    <item row="4" column="3">
-     <widget class="QListView" name="listView_pe"/>
-    </item>
-    <item row="5" column="3">
-     <widget class="QListView" name="listView_ce"/>
-    </item>
-    <item row="6" column="3">
-     <widget class="QListView" name="listView_tle"/>
-    </item>
     <item row="0" column="1">
      <widget class="QLabel" name="lab_personal">
       <property name="text">
@@ -177,9 +95,6 @@
        </size>
       </property>
      </widget>
-    </item>
-    <item row="1" column="3">
-     <widget class="QListView" name="listView_sub"/>
     </item>
    </layout>
   </widget>
