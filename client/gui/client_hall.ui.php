@@ -40,6 +40,16 @@
     <item row="2" column="0" rowspan="5">
      <widget class="QListView" name="listView"/>
     </item>
+    <?php
+    	$arrTable=array(
+    		'sub'=>'Submit',
+    		'ac'=>'Accept',
+    		'wa'=>'Wrong Answer',
+    		'pe'=>'Presentation Error',
+    		'ce'=>'Compile Error',
+    		'tle'=>'Time Limit Exceeded',
+    	);
+    ?>
     <item row="1" column="2">
      <widget class="QLabel" name="lab_sub">
       <property name="maximumSize">
