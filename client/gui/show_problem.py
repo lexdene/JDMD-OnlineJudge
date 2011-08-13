@@ -1,10 +1,10 @@
 from PyQt4 import QtCore, QtGui
 
-import ui_client_hall
+import ui_show_problem
 
-class client_hall(QtGui.QWidget):
+class show_problem(QtGui.QWidget):
   def __init__(self,parent=None):
     QtGui.QWidget.__init__(self,parent)
-    ui = ui_client_hall.Ui_client_hall()
+    ui = ui_show_problem.Ui_show_problem()
     ui.setupUi(self)
 

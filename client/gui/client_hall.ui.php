@@ -2,8 +2,8 @@
 	echo '<?xml version="1.0" encoding="UTF-8"?>'."\n";
 ?>
 <ui version="4.0">
- <class>Form</class>
- <widget class="QWidget" name="Form">
+ <class>client_hall</class>
+ <widget class="QWidget" name="client_hall">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -13,7 +13,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>Client Hall</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="2" colspan="2">
@@ -30,8 +30,8 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="0" rowspan="6">
-    <widget class="QListView" name="listView"/>
+   <item row="1" column="0" rowspan="7">
+    <widget class="QListView" name="listView_problem"/>
    </item>
    <?php
    	$arrTable=array(
@@ -41,6 +41,7 @@
    		'pe'=>'Presentation Error',
    		'ce'=>'Compile Error',
    		'tle'=>'Time Limit Exceeded',
+   		'mle'=>'Memory Limit Exceeded',
    	);
    	$iN = 1;
    	foreach($arrTable as $name => $text){
@@ -79,7 +80,7 @@ STR;
      </property>
     </widget>
    </item>
-   <item row="2" column="1" rowspan="5">
+   <item row="2" column="1" rowspan="6">
     <widget class="QListView" name="listView_fresh_news">
      <property name="minimumSize">
       <size>
