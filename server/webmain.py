@@ -3,6 +3,8 @@ from lxml import etree
 import subprocess
 import urllib
 import os
+import sys
+import getopt
 
 servername = '127.0.0.1'
 port = 8080
@@ -10,6 +12,7 @@ loginPath = '/user/LoginResult'
 submitListPath = '/judgeface/UnjudgeSubmitList'
 problemInfoPath = '/judgeface/ProblemInfo'
 downloadDataPath = '/judgeface/DownloadData'
+sendJudgeResultPath = '/judgeface/JudgeResult'
 tempDir = '/tmp/JDMD-OnlineJudge'
 codeDirTpl = '%s/code/%d'
 dataDirTpl = '%s/data/%d'
@@ -24,9 +27,12 @@ def login(loginname,password):
 	response = conn.getresponse()
 	responseHeaders = response.getheaders()
 	cookie=''
-	for h in responseHeaders:
-		if h[0] == 'set-cookie':
-			cookie = h[1]
+	for key,value in responseHeaders:
+		if key == 'set-cookie':
+			cookie = value
+		elif key == 'login-result':
+			if value != 'success':
+				raise Exception('login failed')
 	return cookie
 
 def submitList(cookie):
@@ -36,15 +42,11 @@ def submitList(cookie):
 	conn.request("GET",submitListPath, headers=headers)
 	
 	response = conn.getresponse()
-	print '==== status ===='
-	print response.status
 	
 	parser = etree.XMLParser(remove_blank_text=True,strip_cdata=False)
 	doc = etree.parse(response, parser=parser)
 	
 	result = doc.xpath('result')[0].text
-	print '================= result ======================'
-	print result
 	
 	sl = []
 	if result == 'success':
@@ -53,14 +55,14 @@ def submitList(cookie):
 			pid = submit.get('pid')
 			language = submit.find('language').text
 			code = submit.find('code').text
-			print '================= code ========================'
-			print code
 			sl.append(dict(
 				id=id,
 				pid=pid,
 				language=language,
 				code=code
 			))
+	else:
+		raise Exception('request submit list failed : `%s`'%result)
 	
 	return sl
 
@@ -70,7 +72,6 @@ def saveCode(s):
 		os.makedirs(codeDir)
 	
 	codeFilePath = '%s/main.cpp'%codeDir
-	print 'codeFilePath:%s'%codeFilePath
 	f = open(codeFilePath,'w')
 	f.write(s['code'])
 	f.close()
@@ -87,14 +88,9 @@ def compileCode(s):
 		stderr = subprocess.PIPE,
 	)
 	p.wait()
-	print '================== compiler return code ======='
-	print p.returncode
-	print '================== compiler stdout ============'
-	print p.stdout.read()
-	print '================== compiler stderr ============'
-	print p.stderr.read()
+	compileErrorMessage = p.stderr.read(1024*8)
 	s['bin'] = binFilePath
-	return True
+	return ( p.returncode == 0,compileErrorMessage)
 	
 def problemInfo(cookie,pid):
 	conn = httplib.HTTPConnection(servername,port)
@@ -104,16 +100,14 @@ def problemInfo(cookie,pid):
 	conn.request("POST",problemInfoPath, params , headers)
 	
 	response = conn.getresponse()
-	print '==== status ===='
-	print response.status
 	
 	parser = etree.XMLParser(remove_blank_text=True,strip_cdata=False)
 	doc = etree.parse(response, parser=parser)
 	
 	result = doc.xpath('result')[0].text
-	print '================= result ======================'
-	print result
 	
+	if result != 'success':
+		raise Exception('request problem info failed : %s'%result)
 	problem = doc.find('problem')
 	return dict(
 		pid = int(problem.get('pid')),
@@ -141,7 +135,6 @@ def downloadData(cookie,problem,dataid,datatype):
 		os.makedirs(dataDir)
 	
 	dataFilePath = '%s/%s_%d.dat'%(dataDir,datatype,dataid)
-	print 'dataFilePath:%s'%dataFilePath
 	f = open(dataFilePath,'w')
 	f.write(response.read())
 	f.close()
@@ -149,13 +142,10 @@ def downloadData(cookie,problem,dataid,datatype):
 	return dataFilePath
 
 def runTest(submit,problem,data):
-	print submit
 	binFilePath = submit['bin']
 	inputFilePath = data['input']
 	outputFilePath = '%s/%d.out'%(submit['codeDir'],data['num'])
-	print outputFilePath
 	errputFilePath = '%s/%d.err'%(submit['codeDir'],data['num'])
-	print errputFilePath
 	
 	inputFile = open( inputFilePath ,'r')
 	outputFile = open( outputFilePath ,'w')
@@ -170,22 +160,83 @@ def runTest(submit,problem,data):
 	outputFile.close()
 	errputFile.close()
 	return True
+	
+def sendJudgeResult(cookie,result):
+	conn = httplib.HTTPConnection(servername,port)
+	
+	params = urllib.urlencode(result)
+	headers = dict(Accept='text/html',Cookie=cookie)
+	conn.request("POST",sendJudgeResultPath, params , headers)
+	
+	response = conn.getresponse()
+	
+	parser = etree.XMLParser(remove_blank_text=True,strip_cdata=False)
+	doc = etree.parse(response, parser=parser)
+	
+	result = doc.xpath('result')[0].text
+	
+	if result != 'success':
+		raise Exception('request problem info failed : %s'%result)
+	else:
+		judgeResult = doc.find('judgeResult')
+		return dict(
+			id=int( judgeResult.get('id') )
+		)
 
-def main():
-	cookie = login('judge','123456')
-	sl = submitList(cookie)
-	for s in sl:
-		saveCode(s)
-		print s
-		compileCode(s)
-		pi = problemInfo(cookie,s['pid'])
-		print pi
-		for i in range(1,pi['dataCount'] +1 ):
-			data = dict(
-				num=i,
-				input=downloadData(cookie,pi,i,'in'),
-				output=downloadData(cookie,pi,i,'out')
-			)
-			runTest(s,pi,data)
+def usage():
+	print 'usage'
+	
+def main(argv):
+	loginname = ''
+	password = ''
+	try:
+		opts, args = getopt.getopt(argv, "l:p:", ["loginname=", "password=",'server=','port='])
+	except getopt.GetoptError:
+		usage()
+		sys.exit(2)
+	for optKey,optValue in opts:
+		if optKey in ('-l','--loginname'):
+			loginname = optValue
+		elif optKey in ('-p','--password'):
+			password = optValue
+		elif optKey == '--server':
+			servername = optValue
+		elif optKey == '--port':
+			port = optValue
+			
+	try:
+		cookie = login(loginname,password)
+		print 'JDMD~ : login success'
+		
+		sl = submitList(cookie)
+		print 'JDMD~ : request submit list success'
+		
+		for s in sl:
+			print 'JDMD~ : begin judge submit %d'%s['id']
+			judgeResult = dict(result='accept',sid=s['id'])
+			saveCode(s)
+			compileResult,compileMessage = compileCode(s)
+			judgeResult['compile message'] = compileMessage
+			if not compileResult:
+				judgeResult['result'] = 'compile error'
+			else:
+				pi = problemInfo(cookie,s['pid'])
+				for i in range(1,pi['dataCount'] +1 ):
+					data = dict(
+						num=i,
+						input=downloadData(cookie,pi,i,'in'),
+						output=downloadData(cookie,pi,i,'out')
+					)
+					runTest(s,pi,data)
+				
+			print '==== judgeResult ===='
+			print judgeResult
+			sjr = sendJudgeResult( cookie , judgeResult )
+			print '==== send judge result ===='
+			print sjr
+	except Exception as e:
+		print 'Exception:'
+		print e
 
-main()
+if __name__ == "__main__":
+	main(sys.argv[1:])
