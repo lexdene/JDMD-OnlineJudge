@@ -17,6 +17,9 @@ tempDir = '/tmp/JDMD-OnlineJudge'
 codeDirTpl = '%s/code/%d'
 dataDirTpl = '%s/data/%d'
 
+reload(sys)
+sys.setdefaultencoding('utf8')
+
 def login(loginname,password):
 	conn = httplib.HTTPConnection(servername,port)
 	
