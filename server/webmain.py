@@ -1,10 +1,10 @@
 import httplib
 from lxml import etree
-import subprocess
 import urllib
 import os
 import sys
 import getopt
+import judgers
 
 servername = '127.0.0.1'
 port = 8080
@@ -82,18 +82,6 @@ def saveCode(s):
 	s['codeDir'] = codeDir
 	s['codeFilePath'] = codeFilePath
 	return True
-
-def compileCode(s):
-	binFilePath = '%s/bin'%s['codeDir']
-	p = subprocess.Popen(
-		["g++",'-o',binFilePath,'-pipe','-O2','-Wall','-W','-DONLINE_JUDGE',s['codeFilePath'] ],
-		stdout = subprocess.PIPE,
-		stderr = subprocess.PIPE,
-	)
-	p.wait()
-	compileErrorMessage = p.stderr.read(1024*8)
-	s['bin'] = binFilePath
-	return ( p.returncode == 0,compileErrorMessage)
 	
 def problemInfo(cookie,pid):
 	conn = httplib.HTTPConnection(servername,port)
@@ -144,26 +132,6 @@ def downloadData(cookie,problem,dataid,datatype):
 	
 	return dataFilePath
 
-def runTest(submit,problem,data):
-	binFilePath = submit['bin']
-	inputFilePath = data['input']
-	outputFilePath = '%s/%d.out'%(submit['codeDir'],data['num'])
-	errputFilePath = '%s/%d.err'%(submit['codeDir'],data['num'])
-	
-	inputFile = open( inputFilePath ,'r')
-	outputFile = open( outputFilePath ,'w')
-	errputFile = open( errputFilePath ,'w')
-	p = subprocess.Popen(
-		[ binFilePath ],
-		stdin=inputFile,
-		stdout=outputFile,
-		stderr=errputFile
-	)
-	inputFile.close()
-	outputFile.close()
-	errputFile.close()
-	return True
-	
 def sendJudgeResult(cookie,result):
 	conn = httplib.HTTPConnection(servername,port)
 	
@@ -207,39 +175,33 @@ def main(argv):
 		elif optKey == '--port':
 			port = optValue
 			
-	try:
-		cookie = login(loginname,password)
-		print 'JDMD~ : login success'
+	cookie = login(loginname,password)
+	print 'JDMD~ : login success'
+	
+	sl = submitList(cookie)
+	print 'JDMD~ : request submit list success'
+	
+	for s in sl:
+		print 'JDMD~ : begin judge submit %d'%s['id']
+		judgeResult = dict(result='accept',sid=s['id'])
+		saveCode(s)
 		
-		sl = submitList(cookie)
-		print 'JDMD~ : request submit list success'
-		
-		for s in sl:
-			print 'JDMD~ : begin judge submit %d'%s['id']
-			judgeResult = dict(result='accept',sid=s['id'])
-			saveCode(s)
-			compileResult,compileMessage = compileCode(s)
-			judgeResult['compile message'] = compileMessage
-			if not compileResult:
-				judgeResult['result'] = 'compile error'
-			else:
-				pi = problemInfo(cookie,s['pid'])
-				for i in range(1,pi['dataCount'] +1 ):
-					data = dict(
-						num=i,
-						input=downloadData(cookie,pi,i,'in'),
-						output=downloadData(cookie,pi,i,'out')
-					)
-					runTest(s,pi,data)
-				
-			print '==== judgeResult ===='
-			print judgeResult
-			sjr = sendJudgeResult( cookie , judgeResult )
-			print '==== send judge result ===='
-			print sjr
-	except Exception as e:
-		print 'Exception:'
-		print e
+		pi = problemInfo(cookie,s['pid'])
+		dataList = dict()
+		for i in range(1,pi['dataCount'] +1 ):
+			dataList[i] = dict(
+				num=i,
+				input=downloadData(cookie,pi,i,'in'),
+				output=downloadData(cookie,pi,i,'out')
+			)
+		judger = judgers.create(s)
+		judgeResult = judger.judge(s,pi,dataList)
+			
+		print '==== judgeResult ===='
+		print judgeResult
+		sjr = sendJudgeResult( cookie , judgeResult )
+		print '==== send judge result ===='
+		print sjr
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
